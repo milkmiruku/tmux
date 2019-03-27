@@ -398,9 +398,10 @@ tty_keys_build(struct tty *tty)
 {
 	const struct tty_default_key_raw	*tdkr;
 	const struct tty_default_key_code	*tdkc;
-	u_int		 			 i, size;
+	u_int		 			 i;
 	const char				*s, *value;
 	struct options_entry			*o;
+	struct options_array_item		*a;
 
 	if (tty->key_tree != NULL)
 		tty_keys_free(tty);
@@ -423,11 +424,13 @@ tty_keys_build(struct tty *tty)
 	}
 
 	o = options_get(global_options, "user-keys");
-	if (o != NULL && options_array_size(o, &size) != -1) {
-		for (i = 0; i < size; i++) {
-			value = options_array_get(o, i);
+	if (o != NULL) {
+		a = options_array_first(o);
+		while (a != NULL) {
+			value = options_array_item_value(a);
 			if (value != NULL)
 				tty_keys_add(tty, value, KEYC_USER + i);
+			a = options_array_next(a);
 		}
 	}
 }
@@ -464,6 +467,10 @@ tty_keys_find(struct tty *tty, const char *buf, size_t len, size_t *size)
 static struct tty_key *
 tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 {
+	/* If no data, no match. */
+	if (len == 0)
+		return (NULL);
+
 	/* If the node is NULL, this is the end of the tree. No match. */
 	if (tk == NULL)
 		return (NULL);
@@ -624,7 +631,7 @@ first_key:
 	 * If not a complete key, look for key with an escape prefix (meta
 	 * modifier).
 	 */
-	if (*buf == '\033') {
+	if (*buf == '\033' && len > 1) {
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
 		if (n == 0) {	/* found */

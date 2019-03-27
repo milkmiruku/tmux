@@ -79,7 +79,7 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 		return (NULL);
-	log_debug("%s: cmd=%s, cwd=%s", __func__, cmd, cwd);
+	log_debug("%s: cmd=%s, cwd=%s", __func__, cmd, cwd == NULL ? "" : cwd);
 
 	/*
 	 * Do not set TERM during .tmux.conf, it is nice to be able to use
@@ -154,6 +154,8 @@ job_run(const char *cmd, struct session *s, const char *cwd,
 
 	job->event = bufferevent_new(job->fd, job_read_callback,
 	    job_write_callback, job_error_callback, job);
+	if (job->event == NULL)
+		fatalx("out of memory");
 	bufferevent_enable(job->event, EV_READ|EV_WRITE);
 
 	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long) job->pid);
